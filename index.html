@@ -1,0 +1,993 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Spendly — Expense Tracker</title>
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Mono:wght@300;400;500&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:        #0d0d0f;
+      --surface:   #141417;
+      --card:      #1a1a1f;
+      --border:    #2a2a32;
+      --accent:    #c8f04c;
+      --accent2:   #4cf0c4;
+      --danger:    #f04c6e;
+      --text:      #eeeef0;
+      --muted:     #7a7a8c;
+      --font-head: 'Syne', sans-serif;
+      --font-mono: 'DM Mono', monospace;
+    }
+
+    html, body {
+      height: 100%;
+      background: var(--bg);
+      color: var(--text);
+      font-family: var(--font-mono);
+      font-size: 14px;
+      line-height: 1.6;
+    }
+
+    /* ── SCROLLBAR ── */
+    ::-webkit-scrollbar { width: 6px; }
+    ::-webkit-scrollbar-track { background: var(--bg); }
+    ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+
+    /* ── AUTH SCREEN ── */
+    #auth-screen {
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+      background: var(--bg);
+      position: relative;
+      overflow: hidden;
+    }
+    #auth-screen::before {
+      content: '';
+      position: absolute;
+      width: 600px; height: 600px;
+      border-radius: 50%;
+      background: radial-gradient(circle, rgba(200,240,76,0.08) 0%, transparent 70%);
+      top: -200px; right: -150px;
+      pointer-events: none;
+    }
+    #auth-screen::after {
+      content: '';
+      position: absolute;
+      width: 400px; height: 400px;
+      border-radius: 50%;
+      background: radial-gradient(circle, rgba(76,240,196,0.06) 0%, transparent 70%);
+      bottom: -100px; left: -100px;
+      pointer-events: none;
+    }
+
+    .auth-box {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      padding: 48px 40px;
+      width: 100%;
+      max-width: 420px;
+      position: relative;
+      z-index: 1;
+      animation: slideUp 0.5s cubic-bezier(0.16,1,0.3,1) both;
+    }
+    @keyframes slideUp {
+      from { opacity: 0; transform: translateY(30px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    .auth-logo {
+      font-family: var(--font-head);
+      font-size: 28px;
+      font-weight: 800;
+      letter-spacing: -0.5px;
+      margin-bottom: 6px;
+    }
+    .auth-logo span { color: var(--accent); }
+
+    .auth-tagline {
+      color: var(--muted);
+      font-size: 13px;
+      margin-bottom: 36px;
+    }
+
+    .tab-row {
+      display: flex;
+      gap: 4px;
+      background: var(--surface);
+      border-radius: 10px;
+      padding: 4px;
+      margin-bottom: 28px;
+    }
+    .tab-btn {
+      flex: 1;
+      padding: 8px 12px;
+      border: none;
+      border-radius: 7px;
+      background: transparent;
+      color: var(--muted);
+      font-family: var(--font-mono);
+      font-size: 13px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .tab-btn.active {
+      background: var(--card);
+      color: var(--text);
+      border: 1px solid var(--border);
+    }
+
+    .form-group { margin-bottom: 18px; }
+    label {
+      display: block;
+      font-size: 11px;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      margin-bottom: 7px;
+    }
+    input, select, textarea {
+      width: 100%;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 11px 14px;
+      color: var(--text);
+      font-family: var(--font-mono);
+      font-size: 14px;
+      transition: border-color 0.2s;
+      outline: none;
+      appearance: none;
+    }
+    input:focus, select:focus, textarea:focus {
+      border-color: var(--accent);
+    }
+    input::placeholder { color: var(--muted); }
+
+    .btn {
+      width: 100%;
+      padding: 13px;
+      border: none;
+      border-radius: 10px;
+      font-family: var(--font-head);
+      font-size: 15px;
+      font-weight: 700;
+      cursor: pointer;
+      transition: all 0.2s;
+      letter-spacing: 0.3px;
+    }
+    .btn-primary {
+      background: var(--accent);
+      color: #0d0d0f;
+    }
+    .btn-primary:hover { background: #d8ff5c; transform: translateY(-1px); }
+    .btn-primary:active { transform: translateY(0); }
+    .btn-danger {
+      background: var(--danger);
+      color: white;
+      width: auto;
+      padding: 8px 16px;
+      font-size: 13px;
+      border-radius: 8px;
+    }
+    .btn-ghost {
+      background: transparent;
+      border: 1px solid var(--border);
+      color: var(--text);
+      width: auto;
+      padding: 8px 16px;
+      font-size: 13px;
+      border-radius: 8px;
+    }
+    .btn-ghost:hover { border-color: var(--muted); }
+    .btn-sm {
+      padding: 7px 14px;
+      font-size: 12px;
+      width: auto;
+      border-radius: 8px;
+      font-family: var(--font-mono);
+      font-weight: 500;
+    }
+    .btn-accent2 { background: var(--accent2); color: #0d0d0f; }
+    .btn-accent2:hover { background: #6fffd9; }
+
+    .auth-error {
+      background: rgba(240,76,110,0.1);
+      border: 1px solid rgba(240,76,110,0.3);
+      border-radius: 8px;
+      padding: 10px 14px;
+      color: var(--danger);
+      font-size: 13px;
+      margin-bottom: 16px;
+      display: none;
+    }
+
+    /* ── APP LAYOUT ── */
+    #app-screen { display: none; min-height: 100vh; }
+
+    .topbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 18px 32px;
+      border-bottom: 1px solid var(--border);
+      background: var(--surface);
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+    .topbar-logo {
+      font-family: var(--font-head);
+      font-size: 22px;
+      font-weight: 800;
+    }
+    .topbar-logo span { color: var(--accent); }
+    .topbar-right {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+    }
+    .user-badge {
+      font-size: 12px;
+      color: var(--muted);
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      padding: 5px 14px;
+    }
+    .logout-btn {
+      background: transparent;
+      border: 1px solid var(--border);
+      color: var(--muted);
+      padding: 6px 14px;
+      border-radius: 8px;
+      font-family: var(--font-mono);
+      font-size: 12px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .logout-btn:hover { border-color: var(--danger); color: var(--danger); }
+
+    .main-content {
+      max-width: 1100px;
+      margin: 0 auto;
+      padding: 36px 32px;
+    }
+
+    /* ── STATS ROW ── */
+    .stats-row {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 16px;
+      margin-bottom: 32px;
+    }
+    .stat-card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 22px 24px;
+      position: relative;
+      overflow: hidden;
+      animation: fadeIn 0.4s ease both;
+    }
+    .stat-card::after {
+      content: '';
+      position: absolute;
+      bottom: -20px; right: -20px;
+      width: 80px; height: 80px;
+      border-radius: 50%;
+      background: radial-gradient(circle, rgba(200,240,76,0.07) 0%, transparent 70%);
+    }
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(12px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+    .stat-label {
+      font-size: 11px;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      margin-bottom: 10px;
+    }
+    .stat-value {
+      font-family: var(--font-head);
+      font-size: 30px;
+      font-weight: 800;
+      color: var(--accent);
+      letter-spacing: -1px;
+    }
+    .stat-value.teal { color: var(--accent2); }
+    .stat-value.white { color: var(--text); }
+
+    /* ── TOOLBAR ── */
+    .toolbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 20px;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+    .filters {
+      display: flex;
+      gap: 6px;
+      flex-wrap: wrap;
+    }
+    .filter-btn {
+      background: var(--card);
+      border: 1px solid var(--border);
+      color: var(--muted);
+      padding: 7px 14px;
+      border-radius: 8px;
+      font-family: var(--font-mono);
+      font-size: 12px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .filter-btn:hover { border-color: var(--muted); color: var(--text); }
+    .filter-btn.active {
+      background: rgba(200,240,76,0.1);
+      border-color: var(--accent);
+      color: var(--accent);
+    }
+
+    /* ── EXPENSE TABLE ── */
+    .table-wrap {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      overflow: hidden;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+    thead tr {
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+    }
+    th {
+      padding: 13px 18px;
+      text-align: left;
+      font-size: 11px;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      font-weight: 500;
+    }
+    tbody tr {
+      border-bottom: 1px solid var(--border);
+      transition: background 0.15s;
+      animation: rowIn 0.3s ease both;
+    }
+    @keyframes rowIn {
+      from { opacity: 0; transform: translateX(-8px); }
+      to   { opacity: 1; transform: translateX(0); }
+    }
+    tbody tr:last-child { border-bottom: none; }
+    tbody tr:hover { background: rgba(255,255,255,0.02); }
+    td {
+      padding: 14px 18px;
+      font-size: 13px;
+    }
+    .amount-cell {
+      font-family: var(--font-head);
+      font-size: 15px;
+      font-weight: 700;
+      color: var(--accent);
+    }
+    .category-pill {
+      display: inline-block;
+      padding: 3px 10px;
+      border-radius: 20px;
+      font-size: 11px;
+      font-weight: 500;
+      letter-spacing: 0.3px;
+    }
+    .pill-Groceries   { background: rgba(76,240,100,0.12);  color: #4cf064; }
+    .pill-Leisure     { background: rgba(200,240,76,0.12); color: var(--accent); }
+    .pill-Electronics { background: rgba(76,160,240,0.12); color: #4ca0f0; }
+    .pill-Utilities   { background: rgba(240,200,76,0.12); color: #f0c84c; }
+    .pill-Clothing    { background: rgba(200,76,240,0.12); color: #c84cf0; }
+    .pill-Health      { background: rgba(76,240,196,0.12); color: var(--accent2); }
+    .pill-Others      { background: rgba(150,150,150,0.12); color: var(--muted); }
+
+    .row-actions { display: flex; gap: 8px; }
+    .icon-btn {
+      background: transparent;
+      border: 1px solid var(--border);
+      color: var(--muted);
+      width: 30px; height: 30px;
+      border-radius: 7px;
+      cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+      transition: all 0.2s;
+      font-size: 13px;
+    }
+    .icon-btn:hover { border-color: var(--accent); color: var(--accent); }
+    .icon-btn.del:hover { border-color: var(--danger); color: var(--danger); }
+
+    .empty-state {
+      text-align: center;
+      padding: 60px 24px;
+      color: var(--muted);
+    }
+    .empty-state .big { font-size: 48px; margin-bottom: 12px; }
+    .empty-state p { font-size: 14px; }
+
+    /* ── MODAL ── */
+    .modal-overlay {
+      position: fixed; inset: 0;
+      background: rgba(0,0,0,0.7);
+      backdrop-filter: blur(4px);
+      display: flex; align-items: center; justify-content: center;
+      z-index: 1000;
+      padding: 24px;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.2s;
+    }
+    .modal-overlay.open {
+      opacity: 1;
+      pointer-events: all;
+    }
+    .modal {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      padding: 36px;
+      width: 100%;
+      max-width: 460px;
+      transform: scale(0.95);
+      transition: transform 0.25s cubic-bezier(0.16,1,0.3,1);
+    }
+    .modal-overlay.open .modal { transform: scale(1); }
+    .modal-title {
+      font-family: var(--font-head);
+      font-size: 20px;
+      font-weight: 700;
+      margin-bottom: 24px;
+    }
+    .modal-footer {
+      display: flex;
+      gap: 10px;
+      justify-content: flex-end;
+      margin-top: 24px;
+    }
+
+    /* ── TOAST ── */
+    #toast {
+      position: fixed;
+      bottom: 28px; right: 28px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 13px 20px;
+      font-size: 13px;
+      color: var(--text);
+      z-index: 9999;
+      transform: translateY(20px);
+      opacity: 0;
+      transition: all 0.3s cubic-bezier(0.16,1,0.3,1);
+      max-width: 320px;
+    }
+    #toast.show { transform: translateY(0); opacity: 1; }
+    #toast.success { border-color: var(--accent); color: var(--accent); }
+    #toast.error   { border-color: var(--danger); color: var(--danger); }
+
+    /* ── DATE RANGE ── */
+    .date-range-row {
+      display: flex;
+      gap: 10px;
+      align-items: flex-end;
+      flex-wrap: wrap;
+      margin-bottom: 20px;
+    }
+    .date-range-row .form-group { margin-bottom: 0; flex: 1; min-width: 140px; }
+
+    /* ── LOADING ── */
+    .spinner {
+      display: inline-block;
+      width: 16px; height: 16px;
+      border: 2px solid var(--border);
+      border-top-color: var(--accent);
+      border-radius: 50%;
+      animation: spin 0.6s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    @media (max-width: 680px) {
+      .stats-row { grid-template-columns: 1fr; }
+      .topbar { padding: 14px 16px; }
+      .main-content { padding: 20px 16px; }
+      th, td { padding: 10px 12px; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- ═══════════════ AUTH SCREEN ═══════════════ -->
+<div id="auth-screen">
+  <div class="auth-box">
+    <div class="auth-logo">Spend<span>ly</span></div>
+    <div class="auth-tagline">Track every dollar. Own every decision.</div>
+
+    <div class="tab-row">
+      <button class="tab-btn active" onclick="switchTab('login')">Sign In</button>
+      <button class="tab-btn" onclick="switchTab('signup')">Sign Up</button>
+    </div>
+
+    <div id="auth-error" class="auth-error"></div>
+
+    <!-- LOGIN -->
+    <div id="login-form">
+      <div class="form-group">
+        <label>Email</label>
+        <input type="email" id="login-email" placeholder="you@example.com" />
+      </div>
+      <div class="form-group">
+        <label>Password</label>
+        <input type="password" id="login-password" placeholder="••••••••" />
+      </div>
+      <button class="btn btn-primary" onclick="handleLogin()">Sign In →</button>
+    </div>
+
+    <!-- SIGNUP -->
+    <div id="signup-form" style="display:none">
+      <div class="form-group">
+        <label>Email</label>
+        <input type="email" id="signup-email" placeholder="you@example.com" />
+      </div>
+      <div class="form-group">
+        <label>Password</label>
+        <input type="password" id="signup-password" placeholder="••••••••" />
+      </div>
+      <button class="btn btn-primary" onclick="handleSignup()">Create Account →</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════ APP SCREEN ═══════════════ -->
+<div id="app-screen">
+  <!-- TOPBAR -->
+  <div class="topbar">
+    <div class="topbar-logo">Spend<span>ly</span></div>
+    <div class="topbar-right">
+      <div class="user-badge" id="user-email-badge">—</div>
+      <button class="btn btn-sm btn-accent2" onclick="openAddModal()">+ Add Expense</button>
+      <button class="logout-btn" onclick="handleLogout()">Log out</button>
+    </div>
+  </div>
+
+  <div class="main-content">
+    <!-- STATS -->
+    <div class="stats-row">
+      <div class="stat-card">
+        <div class="stat-label">Total Expenses</div>
+        <div class="stat-value" id="stat-total">$0.00</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Number of Entries</div>
+        <div class="stat-value teal" id="stat-count">0</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Avg per Entry</div>
+        <div class="stat-value white" id="stat-avg">$0.00</div>
+      </div>
+    </div>
+
+    <!-- TOOLBAR -->
+    <div class="toolbar">
+      <div class="filters">
+        <button class="filter-btn active" onclick="setFilter(null, this)">All</button>
+        <button class="filter-btn" onclick="setFilter('week', this)">7 Days</button>
+        <button class="filter-btn" onclick="setFilter('month', this)">30 Days</button>
+        <button class="filter-btn" onclick="setFilter('3months', this)">3 Months</button>
+        <button class="filter-btn" onclick="toggleDateRange(this)">Custom Range</button>
+      </div>
+    </div>
+
+    <!-- DATE RANGE (hidden by default) -->
+    <div id="date-range-row" class="date-range-row" style="display:none">
+      <div class="form-group">
+        <label>From</label>
+        <input type="date" id="range-start" />
+      </div>
+      <div class="form-group">
+        <label>To</label>
+        <input type="date" id="range-end" />
+      </div>
+      <button class="btn btn-ghost btn-sm" onclick="applyDateRange()">Apply</button>
+      <button class="btn btn-ghost btn-sm" onclick="clearDateRange()">Clear</button>
+    </div>
+
+    <!-- TABLE -->
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Date</th>
+            <th>Category</th>
+            <th>Description</th>
+            <th>Amount</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody id="expense-tbody">
+          <tr><td colspan="5"><div class="empty-state"><div class="spinner"></div></div></td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════ ADD / EDIT MODAL ═══════════════ -->
+<div class="modal-overlay" id="expense-modal">
+  <div class="modal">
+    <div class="modal-title" id="modal-title">Add Expense</div>
+    <div id="modal-error" class="auth-error"></div>
+    <div class="form-group">
+      <label>Amount ($)</label>
+      <input type="number" id="m-amount" placeholder="0.00" step="0.01" min="0" />
+    </div>
+    <div class="form-group">
+      <label>Category</label>
+      <select id="m-category">
+        <option value="Groceries">Groceries</option>
+        <option value="Leisure">Leisure</option>
+        <option value="Electronics">Electronics</option>
+        <option value="Utilities">Utilities</option>
+        <option value="Clothing">Clothing</option>
+        <option value="Health">Health</option>
+        <option value="Others">Others</option>
+      </select>
+    </div>
+    <div class="form-group">
+      <label>Description</label>
+      <input type="text" id="m-description" placeholder="What did you spend on?" />
+    </div>
+    <div class="form-group">
+      <label>Date</label>
+      <input type="date" id="m-date" />
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost btn-sm" onclick="closeModal()">Cancel</button>
+      <button class="btn btn-primary btn-sm" onclick="saveExpense()">Save</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════ CONFIRM DELETE MODAL ═══════════════ -->
+<div class="modal-overlay" id="delete-modal">
+  <div class="modal" style="max-width:360px">
+    <div class="modal-title">Delete Expense?</div>
+    <p style="color:var(--muted); font-size:13px; margin-bottom: 8px;">This action cannot be undone.</p>
+    <div class="modal-footer">
+      <button class="btn btn-ghost btn-sm" onclick="closeDeleteModal()">Cancel</button>
+      <button class="btn btn-danger btn-sm" onclick="confirmDelete()">Delete</button>
+    </div>
+  </div>
+</div>
+
+<!-- TOAST -->
+<div id="toast"></div>
+
+<script>
+  // ── CONFIG ──────────────────────────────────────────────────────────
+  const API = 'http://localhost:8000'; // change to your backend URL
+
+  // ── STATE ───────────────────────────────────────────────────────────
+  let token = localStorage.getItem('spendly_token') || null;
+  let userEmail = localStorage.getItem('spendly_email') || '';
+  let currentFilter = null;
+  let editingId = null;
+  let deletingId = null;
+  let showingDateRange = false;
+
+  // ── INIT ────────────────────────────────────────────────────────────
+  if (token) showApp();
+
+  // ── AUTH HELPERS ────────────────────────────────────────────────────
+  function switchTab(tab) {
+    document.getElementById('login-form').style.display  = tab === 'login'  ? 'block' : 'none';
+    document.getElementById('signup-form').style.display = tab === 'signup' ? 'block' : 'none';
+    document.querySelectorAll('.tab-btn').forEach((b, i) => {
+      b.classList.toggle('active', (i === 0 && tab === 'login') || (i === 1 && tab === 'signup'));
+    });
+    hideAuthError();
+  }
+
+  function showAuthError(msg) {
+    const el = document.getElementById('auth-error');
+    el.textContent = msg;
+    el.style.display = 'block';
+  }
+  function hideAuthError() {
+    document.getElementById('auth-error').style.display = 'none';
+  }
+
+  async function handleLogin() {
+    const email = document.getElementById('login-email').value.trim();
+    const pass  = document.getElementById('login-password').value;
+    if (!email || !pass) { showAuthError('Please fill in all fields.'); return; }
+    hideAuthError();
+    const body = new URLSearchParams({ username: email, password: pass });
+    try {
+      const res = await fetch(`${API}/user/auth/login`, { method: 'POST', body });
+      const data = await res.json();
+      if (!res.ok) { showAuthError(data.detail || 'Login failed.'); return; }
+      token = data.access_token;
+      userEmail = email;
+      localStorage.setItem('spendly_token', token);
+      localStorage.setItem('spendly_email', email);
+      showApp();
+    } catch(e) { showAuthError('Cannot reach server. Check API URL.'); }
+  }
+
+  async function handleSignup() {
+    const email = document.getElementById('signup-email').value.trim();
+    const pass  = document.getElementById('signup-password').value;
+    if (!email || !pass) { showAuthError('Please fill in all fields.'); return; }
+    hideAuthError();
+    try {
+      const res = await fetch(`${API}/user/auth/signup`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password: pass })
+      });
+      const data = await res.json();
+      if (!res.ok) { showAuthError(data.detail || 'Signup failed.'); return; }
+      showToast('Account created! Please sign in.', 'success');
+      switchTab('login');
+      document.getElementById('login-email').value = email;
+    } catch(e) { showAuthError('Cannot reach server. Check API URL.'); }
+  }
+
+  function handleLogout() {
+    token = null; userEmail = '';
+    localStorage.removeItem('spendly_token');
+    localStorage.removeItem('spendly_email');
+    document.getElementById('app-screen').style.display = 'none';
+    document.getElementById('auth-screen').style.display = 'flex';
+    currentFilter = null;
+  }
+
+  // ── APP ─────────────────────────────────────────────────────────────
+  function showApp() {
+    document.getElementById('auth-screen').style.display = 'none';
+    document.getElementById('app-screen').style.display  = 'block';
+    document.getElementById('user-email-badge').textContent = userEmail;
+    loadExpenses();
+  }
+
+  async function loadExpenses() {
+    renderLoading();
+    let url = `${API}/user/expenses`;
+    const params = new URLSearchParams();
+    const rangeStart = document.getElementById('range-start')?.value;
+    const rangeEnd   = document.getElementById('range-end')?.value;
+
+    if (rangeStart && rangeEnd) {
+      params.set('start_date', rangeStart);
+      params.set('end_date', rangeEnd);
+    } else if (currentFilter) {
+      params.set('expense_filter', currentFilter);
+    }
+    if ([...params].length) url += '?' + params.toString();
+
+    try {
+      const res = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
+      if (res.status === 401) { handleLogout(); return; }
+      const data = await res.json();
+      renderExpenses(data);
+      updateStats(data);
+    } catch(e) {
+      renderError();
+    }
+  }
+
+  function renderLoading() {
+    document.getElementById('expense-tbody').innerHTML =
+      `<tr><td colspan="5"><div class="empty-state"><div class="spinner"></div></div></td></tr>`;
+  }
+  function renderError() {
+    document.getElementById('expense-tbody').innerHTML =
+      `<tr><td colspan="5"><div class="empty-state"><div class="big">⚠️</div><p>Failed to load expenses.</p></div></td></tr>`;
+  }
+
+  function renderExpenses(list) {
+    const tbody = document.getElementById('expense-tbody');
+    if (!list.length) {
+      tbody.innerHTML = `<tr><td colspan="5"><div class="empty-state"><div class="big">💸</div><p>No expenses found. Add your first one!</p></div></td></tr>`;
+      return;
+    }
+    tbody.innerHTML = list.map((e, i) => `
+      <tr style="animation-delay:${i * 0.04}s">
+        <td style="color:var(--muted)">${formatDate(e.date)}</td>
+        <td><span class="category-pill pill-${e.category}">${e.category}</span></td>
+        <td>${escHtml(e.description)}</td>
+        <td class="amount-cell">$${parseFloat(e.amount).toFixed(2)}</td>
+        <td>
+          <div class="row-actions">
+            <button class="icon-btn" onclick="openEditModal(${e.id})" title="Edit">✏️</button>
+            <button class="icon-btn del" onclick="openDeleteModal(${e.id})" title="Delete">🗑</button>
+          </div>
+        </td>
+      </tr>
+    `).join('');
+  }
+
+  function updateStats(list) {
+    const total = list.reduce((s, e) => s + parseFloat(e.amount), 0);
+    const count = list.length;
+    const avg   = count ? total / count : 0;
+    document.getElementById('stat-total').textContent = '$' + total.toFixed(2);
+    document.getElementById('stat-count').textContent = count;
+    document.getElementById('stat-avg').textContent   = '$' + avg.toFixed(2);
+  }
+
+  // ── FILTERS ─────────────────────────────────────────────────────────
+  function setFilter(f, btn) {
+    currentFilter = f;
+    showingDateRange = false;
+    document.getElementById('date-range-row').style.display = 'none';
+    document.getElementById('range-start').value = '';
+    document.getElementById('range-end').value   = '';
+    document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    loadExpenses();
+  }
+
+  function toggleDateRange(btn) {
+    showingDateRange = !showingDateRange;
+    document.getElementById('date-range-row').style.display = showingDateRange ? 'flex' : 'none';
+    document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+    if (showingDateRange) btn.classList.add('active');
+    else loadExpenses();
+  }
+
+  function applyDateRange() {
+    currentFilter = null;
+    loadExpenses();
+  }
+  function clearDateRange() {
+    document.getElementById('range-start').value = '';
+    document.getElementById('range-end').value   = '';
+    currentFilter = null;
+    loadExpenses();
+  }
+
+  // ── ADD / EDIT MODAL ─────────────────────────────────────────────────
+  function openAddModal() {
+    editingId = null;
+    document.getElementById('modal-title').textContent = 'Add Expense';
+    document.getElementById('m-amount').value       = '';
+    document.getElementById('m-category').value     = 'Groceries';
+    document.getElementById('m-description').value  = '';
+    document.getElementById('m-date').value         = todayStr();
+    document.getElementById('modal-error').style.display = 'none';
+    document.getElementById('expense-modal').classList.add('open');
+  }
+
+  async function openEditModal(id) {
+    editingId = id;
+    document.getElementById('modal-title').textContent = 'Edit Expense';
+    document.getElementById('modal-error').style.display = 'none';
+    try {
+      const res = await fetch(`${API}/user/expenses/${id}`, { headers: { Authorization: `Bearer ${token}` } });
+      const e = await res.json();
+      document.getElementById('m-amount').value      = e.amount;
+      document.getElementById('m-category').value    = e.category;
+      document.getElementById('m-description').value = e.description;
+      document.getElementById('m-date').value        = e.date;
+      document.getElementById('expense-modal').classList.add('open');
+    } catch { showToast('Could not load expense.', 'error'); }
+  }
+
+  function closeModal() {
+    document.getElementById('expense-modal').classList.remove('open');
+  }
+
+  async function saveExpense() {
+    const amount      = parseFloat(document.getElementById('m-amount').value);
+    const category    = document.getElementById('m-category').value;
+    const description = document.getElementById('m-description').value.trim();
+    const date        = document.getElementById('m-date').value;
+    const errEl       = document.getElementById('modal-error');
+
+    if (!amount || !description || !date) {
+      errEl.textContent = 'All fields are required.';
+      errEl.style.display = 'block';
+      return;
+    }
+    errEl.style.display = 'none';
+
+    const payload = { amount, category, description, date };
+    const isEdit  = editingId !== null;
+    const url     = isEdit ? `${API}/user/expenses/${editingId}` : `${API}/user/expenses`;
+    const method  = isEdit ? 'PUT' : 'POST';
+
+    try {
+      const res = await fetch(url, {
+        method,
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify(payload)
+      });
+      if (!res.ok) {
+        const d = await res.json();
+        errEl.textContent = d.detail || 'Error saving expense.';
+        errEl.style.display = 'block';
+        return;
+      }
+      closeModal();
+      showToast(isEdit ? 'Expense updated!' : 'Expense added!', 'success');
+      loadExpenses();
+    } catch { errEl.textContent = 'Network error.'; errEl.style.display = 'block'; }
+  }
+
+  // ── DELETE ───────────────────────────────────────────────────────────
+  function openDeleteModal(id) {
+    deletingId = id;
+    document.getElementById('delete-modal').classList.add('open');
+  }
+  function closeDeleteModal() {
+    document.getElementById('delete-modal').classList.remove('open');
+    deletingId = null;
+  }
+  async function confirmDelete() {
+    try {
+      await fetch(`${API}/user/expenses/${deletingId}`, {
+        method: 'DELETE',
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      closeDeleteModal();
+      showToast('Expense deleted.', 'success');
+      loadExpenses();
+    } catch { showToast('Delete failed.', 'error'); }
+  }
+
+  // ── UTILS ────────────────────────────────────────────────────────────
+  function todayStr() {
+    return new Date().toISOString().split('T')[0];
+  }
+  function formatDate(str) {
+    const d = new Date(str + 'T00:00:00');
+    return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+  }
+  function escHtml(s) {
+    return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  }
+
+  let toastTimer;
+  function showToast(msg, type = '') {
+    const el = document.getElementById('toast');
+    el.textContent = msg;
+    el.className = 'show ' + type;
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => { el.className = ''; }, 3000);
+  }
+
+  // ── KEYBOARD ────────────────────────────────────────────────────────
+  document.addEventListener('keydown', e => {
+    if (e.key === 'Escape') { closeModal(); closeDeleteModal(); }
+    if (e.key === 'Enter' && document.getElementById('expense-modal').classList.contains('open')) saveExpense();
+    if (e.key === 'Enter' && document.getElementById('login-form').style.display !== 'none'
+        && document.getElementById('auth-screen').style.display !== 'none') handleLogin();
+  });
+
+  // close modals on overlay click
+  document.getElementById('expense-modal').addEventListener('click', function(e) {
+    if (e.target === this) closeModal();
+  });
+  document.getElementById('delete-modal').addEventListener('click', function(e) {
+    if (e.target === this) closeDeleteModal();
+  });
+</script>
+</body>
+</html>
