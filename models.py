@@ -1,7 +1,7 @@
 from pydantic import BaseModel, ConfigDict, Field
 from datetime import datetime, date as Date
 from enum import Enum
-from typing import Optional
+from typing import Optional, List
 
 class Category(str, Enum):
     """Allowed expense categories visible to the API."""
@@ -65,3 +65,10 @@ class ExpenseResponse(BaseModel):
     date: Date
     created_at: datetime
     model_config = ConfigDict(from_attributes=True)
+
+class ExpensePagination(BaseModel):
+    page: int
+    size: int
+    total: int
+    total_pages: int
+    data: List[ExpenseResponse]

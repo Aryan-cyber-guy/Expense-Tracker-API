@@ -31,7 +31,6 @@
       line-height: 1.6;
     }
 
-    /* ── SCROLLBAR ── */
     ::-webkit-scrollbar { width: 6px; }
     ::-webkit-scrollbar-track { background: var(--bg); }
     ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
@@ -337,6 +336,24 @@
       color: var(--accent);
     }
 
+    /* ── PAGE SIZE SELECTOR ── */
+    .page-size-wrap {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 12px;
+      color: var(--muted);
+    }
+    .page-size-wrap select {
+      width: auto;
+      padding: 6px 10px;
+      font-size: 12px;
+      border-radius: 8px;
+      background: var(--card);
+      border: 1px solid var(--border);
+      color: var(--text);
+    }
+
     /* ── EXPENSE TABLE ── */
     .table-wrap {
       background: var(--card);
@@ -420,6 +437,72 @@
     }
     .empty-state .big { font-size: 48px; margin-bottom: 12px; }
     .empty-state p { font-size: 14px; }
+
+    /* ── PAGINATION ── */
+    .pagination-bar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 16px 20px;
+      border-top: 1px solid var(--border);
+      background: var(--surface);
+      flex-wrap: wrap;
+      gap: 12px;
+    }
+    .pagination-info {
+      font-size: 12px;
+      color: var(--muted);
+    }
+    .pagination-info strong {
+      color: var(--text);
+      font-weight: 500;
+    }
+    .pagination-controls {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+    .page-btn {
+      background: var(--card);
+      border: 1px solid var(--border);
+      color: var(--muted);
+      width: 32px;
+      height: 32px;
+      border-radius: 8px;
+      font-family: var(--font-mono);
+      font-size: 12px;
+      cursor: pointer;
+      transition: all 0.2s;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .page-btn:hover:not(:disabled) {
+      border-color: var(--accent);
+      color: var(--accent);
+    }
+    .page-btn.active {
+      background: rgba(200,240,76,0.12);
+      border-color: var(--accent);
+      color: var(--accent);
+      font-weight: 600;
+    }
+    .page-btn:disabled {
+      opacity: 0.3;
+      cursor: not-allowed;
+    }
+    .page-btn.wide {
+      width: auto;
+      padding: 0 10px;
+      font-size: 11px;
+      letter-spacing: 0.5px;
+    }
+    .page-ellipsis {
+      color: var(--muted);
+      font-size: 12px;
+      padding: 0 4px;
+      user-select: none;
+    }
 
     /* ── MODAL ── */
     .modal-overlay {
@@ -507,6 +590,7 @@
       .topbar { padding: 14px 16px; }
       .main-content { padding: 20px 16px; }
       th, td { padding: 10px 12px; }
+      .pagination-bar { flex-direction: column; align-items: flex-start; }
     }
   </style>
 </head>
@@ -591,6 +675,16 @@
         <button class="filter-btn" onclick="setFilter('3months', this)">3 Months</button>
         <button class="filter-btn" onclick="toggleDateRange(this)">Custom Range</button>
       </div>
+      <div class="page-size-wrap">
+        <span>Show</span>
+        <select id="page-size-select" onchange="onPageSizeChange()">
+          <option value="10" selected>10</option>
+          <option value="25">25</option>
+          <option value="50">50</option>
+          <option value="100">100</option>
+        </select>
+        <span>per page</span>
+      </div>
     </div>
 
     <!-- DATE RANGE (hidden by default) -->
@@ -623,6 +717,12 @@
           <tr><td colspan="5"><div class="empty-state"><div class="spinner"></div></div></td></tr>
         </tbody>
       </table>
+
+      <!-- PAGINATION BAR (lives inside table-wrap so it's visually connected) -->
+      <div class="pagination-bar" id="pagination-bar" style="display:none">
+        <div class="pagination-info" id="pagination-info"></div>
+        <div class="pagination-controls" id="pagination-controls"></div>
+      </div>
     </div>
   </div>
 </div>
@@ -680,7 +780,7 @@
 
 <script>
   // ── CONFIG ──────────────────────────────────────────────────────────
-  const API = 'https://expense-tracker-api-st7b.onrender.com'; // change to your backend URL
+  const API = 'https://expense-tracker-api-st7b.onrender.com';
 
   // ── STATE ───────────────────────────────────────────────────────────
   let token = localStorage.getItem('spendly_token') || null;
@@ -689,6 +789,12 @@
   let editingId = null;
   let deletingId = null;
   let showingDateRange = false;
+
+  // Pagination state
+  let currentPage = 1;
+  let currentSize = 10;
+  let totalPages  = 1;
+  let totalItems  = 0;
 
   // ── INIT ────────────────────────────────────────────────────────────
   if (token) showApp();
@@ -756,6 +862,7 @@
     document.getElementById('app-screen').style.display = 'none';
     document.getElementById('auth-screen').style.display = 'flex';
     currentFilter = null;
+    currentPage = 1;
   }
 
   // ── APP ─────────────────────────────────────────────────────────────
@@ -768,8 +875,12 @@
 
   async function loadExpenses() {
     renderLoading();
-    let url = `${API}/user/expenses`;
     const params = new URLSearchParams();
+
+    // Always send page & size
+    params.set('page', currentPage);
+    params.set('size', currentSize);
+
     const rangeStart = document.getElementById('range-start')?.value;
     const rangeEnd   = document.getElementById('range-end')?.value;
 
@@ -779,14 +890,22 @@
     } else if (currentFilter) {
       params.set('expense_filter', currentFilter);
     }
-    if ([...params].length) url += '?' + params.toString();
+
+    const url = `${API}/user/expenses?${params.toString()}`;
 
     try {
       const res = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
       if (res.status === 401) { handleLogout(); return; }
       const data = await res.json();
-      renderExpenses(data);
-      updateStats(data);
+
+      // data is now { page, size, total, total_pages, data: [...] }
+      totalPages = data.total_pages || 1;
+      totalItems = data.total || 0;
+      currentPage = data.page || 1;
+
+      renderExpenses(data.data || []);
+      updateStats(data.data || [], data.total);
+      renderPagination();
     } catch(e) {
       renderError();
     }
@@ -795,10 +914,12 @@
   function renderLoading() {
     document.getElementById('expense-tbody').innerHTML =
       `<tr><td colspan="5"><div class="empty-state"><div class="spinner"></div></div></td></tr>`;
+    document.getElementById('pagination-bar').style.display = 'none';
   }
   function renderError() {
     document.getElementById('expense-tbody').innerHTML =
       `<tr><td colspan="5"><div class="empty-state"><div class="big">⚠️</div><p>Failed to load expenses.</p></div></td></tr>`;
+    document.getElementById('pagination-bar').style.display = 'none';
   }
 
   function renderExpenses(list) {
@@ -823,18 +944,94 @@
     `).join('');
   }
 
-  function updateStats(list) {
-    const total = list.reduce((s, e) => s + parseFloat(e.amount), 0);
-    const count = list.length;
-    const avg   = count ? total / count : 0;
-    document.getElementById('stat-total').textContent = '$' + total.toFixed(2);
+  // Stats are based on the current page's data but we show total count from API
+  function updateStats(pageData, total) {
+    // Sum of all expenses on current page for display
+    const pageTotal = pageData.reduce((s, e) => s + parseFloat(e.amount), 0);
+    const count = total || 0; // total entries across all pages
+    // We can only compute true avg if we had all data; show page subtotal + total count
+    const avg = count && pageData.length ? pageTotal / pageData.length : 0;
+
+    document.getElementById('stat-total').textContent = '$' + pageTotal.toFixed(2);
     document.getElementById('stat-count').textContent = count;
     document.getElementById('stat-avg').textContent   = '$' + avg.toFixed(2);
+  }
+
+  // ── PAGINATION RENDERING ────────────────────────────────────────────
+  function renderPagination() {
+    const bar      = document.getElementById('pagination-bar');
+    const infoEl   = document.getElementById('pagination-info');
+    const ctrlEl   = document.getElementById('pagination-controls');
+
+    if (totalPages <= 0) { bar.style.display = 'none'; return; }
+    bar.style.display = 'flex';
+
+    // Info text: "Showing 11–20 of 48"
+    const from = (currentPage - 1) * currentSize + 1;
+    const to   = Math.min(currentPage * currentSize, totalItems);
+    infoEl.innerHTML = `Showing <strong>${from}–${to}</strong> of <strong>${totalItems}</strong>`;
+
+    // Build page number buttons with smart ellipsis
+    const pages = buildPageRange(currentPage, totalPages);
+    let html = '';
+
+    html += `<button class="page-btn wide" onclick="goToPage(${currentPage - 1})" ${currentPage === 1 ? 'disabled' : ''}>← Prev</button>`;
+
+    pages.forEach(p => {
+      if (p === '…') {
+        html += `<span class="page-ellipsis">…</span>`;
+      } else {
+        html += `<button class="page-btn ${p === currentPage ? 'active' : ''}" onclick="goToPage(${p})">${p}</button>`;
+      }
+    });
+
+    html += `<button class="page-btn wide" onclick="goToPage(${currentPage + 1})" ${currentPage === totalPages ? 'disabled' : ''}>Next →</button>`;
+
+    ctrlEl.innerHTML = html;
+  }
+
+  // Returns an array like [1, '…', 4, 5, 6, '…', 12]
+  function buildPageRange(current, total) {
+    if (total <= 7) return Array.from({ length: total }, (_, i) => i + 1);
+
+    const pages = [];
+    const delta = 1; // pages around current
+
+    const left  = current - delta;
+    const right = current + delta;
+
+    pages.push(1);
+
+    if (left > 2)  pages.push('…');
+
+    for (let i = Math.max(2, left); i <= Math.min(total - 1, right); i++) {
+      pages.push(i);
+    }
+
+    if (right < total - 1) pages.push('…');
+
+    pages.push(total);
+    return pages;
+  }
+
+  function goToPage(page) {
+    if (page < 1 || page > totalPages || page === currentPage) return;
+    currentPage = page;
+    loadExpenses();
+    // Smooth scroll to top of table
+    document.querySelector('.table-wrap')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
+
+  function onPageSizeChange() {
+    currentSize = parseInt(document.getElementById('page-size-select').value, 10);
+    currentPage = 1; // reset to first page when size changes
+    loadExpenses();
   }
 
   // ── FILTERS ─────────────────────────────────────────────────────────
   function setFilter(f, btn) {
     currentFilter = f;
+    currentPage   = 1;
     showingDateRange = false;
     document.getElementById('date-range-row').style.display = 'none';
     document.getElementById('range-start').value = '';
@@ -854,12 +1051,14 @@
 
   function applyDateRange() {
     currentFilter = null;
+    currentPage   = 1;
     loadExpenses();
   }
   function clearDateRange() {
     document.getElementById('range-start').value = '';
     document.getElementById('range-end').value   = '';
     currentFilter = null;
+    currentPage   = 1;
     loadExpenses();
   }
 
@@ -927,6 +1126,8 @@
       }
       closeModal();
       showToast(isEdit ? 'Expense updated!' : 'Expense added!', 'success');
+      // On add, go to page 1 so the new entry is visible (sorted by date desc)
+      if (!isEdit) currentPage = 1;
       loadExpenses();
     } catch { errEl.textContent = 'Network error.'; errEl.style.display = 'block'; }
   }
@@ -948,6 +1149,9 @@
       });
       closeDeleteModal();
       showToast('Expense deleted.', 'success');
+      // If we deleted the last item on the current page, go back one page
+      const itemsOnPage = document.querySelectorAll('#expense-tbody tr').length;
+      if (itemsOnPage === 1 && currentPage > 1) currentPage--;
       loadExpenses();
     } catch { showToast('Delete failed.', 'error'); }
   }
@@ -979,9 +1183,11 @@
     if (e.key === 'Enter' && document.getElementById('expense-modal').classList.contains('open')) saveExpense();
     if (e.key === 'Enter' && document.getElementById('login-form').style.display !== 'none'
         && document.getElementById('auth-screen').style.display !== 'none') handleLogin();
+    // Arrow key navigation
+    if (e.key === 'ArrowRight' && !document.getElementById('expense-modal').classList.contains('open')) goToPage(currentPage + 1);
+    if (e.key === 'ArrowLeft'  && !document.getElementById('expense-modal').classList.contains('open')) goToPage(currentPage - 1);
   });
 
-  // close modals on overlay click
   document.getElementById('expense-modal').addEventListener('click', function(e) {
     if (e.target === this) closeModal();
   });

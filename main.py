@@ -1,13 +1,14 @@
-from fastapi import FastAPI, Depends, HTTPException
+from fastapi import FastAPI, Depends, HTTPException, Query
 from fastapi.security import OAuth2PasswordRequestForm
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
 from database import engine, get_db
-from models import UserCreate, ExpenseCreate, ExpenseUpdate, ExpenseResponse, Token, ExpenseFilter
+from models import UserCreate, ExpenseCreate, ExpenseUpdate, ExpenseResponse, Token, ExpenseFilter, ExpensePagination
 from db_models import Db_Expenses, Db_Users, Base
 from auth import hash_password, verify_password, create_access_token,get_current_user
 from datetime import datetime, timedelta, timezone
 from typing import Optional
+from math import ceil
 
 # FastAPI application instance
 app = FastAPI()
@@ -71,8 +72,10 @@ def login(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depend
     return {"access_token": token, "token_type": "bearer"}
 
 
-@app.get("/user/expenses", response_model=list[ExpenseResponse], tags=["expenses"])
+@app.get("/user/expenses", response_model=ExpensePagination, tags=["expenses"])
 def get_all(
+    page: int = Query(1, ge=1),
+    size: int = Query(10, ge=1, le=100),
     expense_filter: Optional[ExpenseFilter] = None,
     start_date: Optional[datetime] = None,
     end_date: Optional[datetime] = None,
@@ -86,7 +89,7 @@ def get_all(
     * ``start_date`` and ``end_date`` for arbitrary ranges (takes precedence
       over the enum filter if both are provided).
     """
-    query = db.query(Db_Expenses).filter(Db_Expenses.user_id == current_user.id)
+    query = db.query(Db_Expenses).filter(Db_Expenses.user_id == current_user.id).order_by(Db_Expenses.created_at.desc())
     now = datetime.now(timezone.utc)
 
     # explicit date range overrides the enum filter if both are provided
@@ -99,8 +102,21 @@ def get_all(
     elif expense_filter == ExpenseFilter.three_months:
         query = query.filter(Db_Expenses.date >= now - timedelta(days=90))
 
-    expenses = query.order_by(Db_Expenses.created_at.desc()).all()
-    return expenses
+    total = query.count()
+
+    offset = (page - 1) * size
+
+    expenses = query.offset(offset).limit(size).all()
+
+    total_pages = ceil(total / size)
+
+    return {
+    "page": page,
+    "size": size,
+    "total": total,
+    "total_pages": total_pages,
+    "data": expenses
+    }
 
 
 @app.get("/user/expenses/{id}", response_model=ExpenseResponse, tags=["expenses"])
