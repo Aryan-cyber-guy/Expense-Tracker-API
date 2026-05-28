@@ -17,13 +17,13 @@ SECRET_KEY = os.getenv("SECRET_KEY")
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTE = 60
 
-# password hashing/verification context (bcrypt)
-pwd = CryptContext(schemes=["bcrypt"], deprecated="auto")
+# password hashing/verification context (argon2)
+pwd = CryptContext(schemes=["argon2"], deprecated="auto")
 # dependency to extract bearer token from authorization header
 oauth_2_scheme = OAuth2PasswordBearer(tokenUrl="user/auth/login")
 
 def hash_password(password: str):
-    """Return a bcrypt hash of the supplied plain password."""
+    """Return a argon2 hash of the supplied plain password."""
     return pwd.hash(password)
 
 
