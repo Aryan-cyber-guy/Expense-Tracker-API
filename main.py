@@ -41,15 +41,20 @@ def signup(user: UserCreate, db: Session = Depends(get_db)):
     The password is hashed using bcrypt and the record is stored in the
     users table. If the email already exists, a 400 error is returned.
     """
-    existing_user = db.query(Db_Users).filter(Db_Users.email == user.email).first()
+    email = user.email.strip().lower()
+    existing_user = db.query(Db_Users).filter(Db_Users.email == email).first()
     if existing_user:
         raise HTTPException(status_code=400, detail="User already registered")
 
     password_hashed = hash_password(user.password)
-    new_user = Db_Users(email=user.email, password_hash=password_hashed)
+    new_user = Db_Users(email=email, password_hash=password_hashed)
 
     db.add(new_user)
-    db.commit()
+    try:
+        db.commit()
+    except:
+        db.rollback()
+        raise
     db.refresh(new_user)
 
     # returning basic feedback instead of full user object for security
@@ -147,7 +152,11 @@ def create_expense(
         date=expense.date,
     )
     db.add(new_expense)
-    db.commit()
+    try:
+        db.commit()
+    except:
+        db.rollback()
+        raise
     db.refresh(new_expense)
     return new_expense
 
@@ -180,7 +189,11 @@ def update_expense(
     if expense.date is not None:
         existing.date = expense.date
 
-    db.commit()
+    try:
+        db.commit()
+    except:
+        db.rollback()
+        raise
     db.refresh(existing)
     return existing
 
@@ -199,7 +212,11 @@ def delete_expense(
         raise HTTPException(status_code=404, detail="Expense not found")
 
     db.delete(expense)
-    db.commit()
+    try:
+        db.commit()
+    except:
+        db.rollback()
+        raise
     return {"message": "Expense deleted successfully"}
 
 import os

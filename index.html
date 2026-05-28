@@ -780,7 +780,7 @@
 
 <script>
   // ── CONFIG ──────────────────────────────────────────────────────────
-  const API = 'https://expense-tracker-api-st7b.onrender.com';
+  const API = 'http://127.0.0.1:8000';
 
   // ── STATE ───────────────────────────────────────────────────────────
   let token = localStorage.getItem('spendly_token') || null;
@@ -848,7 +848,35 @@
         body: JSON.stringify({ email, password: pass })
       });
       const data = await res.json();
-      if (!res.ok) { showAuthError(data.detail || 'Signup failed.'); return; }
+      if (!res.ok) {
+
+        // FastAPI validation errors (422)
+        if (Array.isArray(data.detail)) {
+
+          const messages = data.detail.map(err => {
+
+            if (err.loc.includes('email')) {
+              return 'Invalid email address';
+            }
+
+            if (err.loc.includes('password')) {
+              return 'Password must be at least 8 characters';
+            }
+
+            return err.msg;
+
+          }).join(', ');
+
+          showAuthError(messages);
+        }
+
+        // Normal HTTPException errors
+        else {
+          showAuthError(data.detail || 'Signup failed.');
+        }
+
+        return;
+      }
       showToast('Account created! Please sign in.', 'success');
       switchTab('login');
       document.getElementById('login-email').value = email;

@@ -9,7 +9,7 @@ class Db_Users(Base):
     __tablename__ = "users"
 
     id = Column(Integer, primary_key=True, index=True)
-    email = Column(String, unique=True, nullable=False)
+    email = Column(String, unique=True, nullable=False, index=True)
     password_hash = Column(String, nullable=False)
     # record when the row was created; UTC timezone assumed by application
     created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))

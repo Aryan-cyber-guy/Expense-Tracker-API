@@ -1,4 +1,4 @@
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, EmailStr, Field
 from datetime import datetime, date as Date
 from enum import Enum
 from typing import Optional, List
@@ -39,9 +39,9 @@ class UserResponse(BaseModel):
 
 class UserCreate(BaseModel):
     """Schema used when a client registers a new account."""
-    email: str
-    password: str
-
+    email: EmailStr
+    password: str = Field(min_length=8, max_length=128)
+    
 class ExpenseCreate(BaseModel):
     """Payload sent by clients when creating an expense entry."""
     amount: float
