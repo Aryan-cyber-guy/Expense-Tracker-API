@@ -68,6 +68,11 @@ expense-tracker-api/
 
 ## Getting Started
 
+You can try the project directly here:
+https://aryan-cyber-guy.github.io/Expense-Tracker-API
+
+Or follow the steps below to run it locally on your machine.
+
 ### Prerequisites
 
 - Python 3.9+
